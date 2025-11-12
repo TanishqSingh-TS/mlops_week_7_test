@@ -16,13 +16,13 @@ env:
   # --- GCP & Artifact Registry Configuration ---
   PROJECT_ID: keen-phalanx-473718-p1
   AR_REGION: us-central1
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   AR_REPOSITORY: mlops-mlflow
   IMAGE_NAME: fastapi-backend
   # --- GKE Deployment Configuration ---
   GKE_CLUSTER: fastapi-ci-cluster
   GKE_ZONE: us-central1-a
   DEPLOYMENT_NAME: fastapi-backend
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   MANIFEST_PATH: k8s/deployment.yaml # Path to your existing deployment file
   
 jobs:
@@ -56,8 +56,6 @@ jobs:
             echo "Cluster ${{ env.GKE_CLUSTER }} already exists. Skipping creation."
           fi
 
----
-
   # ==========================================================
   # JOB 2: BUILD, PUSH, AND DEPLOYMENT
   # ==========================================================
@@ -76,18 +74,6 @@ jobs:
       
       - name: Setup CML (Continuous Machine Learning)
         uses: iterative/setup-cml@v2.0.1
-        env:
-          # ADDED: GITHUB_TOKEN for authenticated GitHub API access to prevent rate limits
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ADDED: Environment variables provided in the original error context
-          PROJECT_ID: keen-phalanx-473718-p1
-          AR_REGION: us-central1
-          AR_REPOSITORY: mlops-mlflow
-          IMAGE_NAME: fastapi-backend
-          GKE_CLUSTER: fastapi-ci-cluster
-          GKE_ZONE: us-central1-a
-          DEPLOYMENT_NAME: fastapi-backend
-          MANIFEST_PATH: k8s/deployment.yaml
 
       - name: Pip install
         run: pip install dvc dvc-gs dvc[gcs]
@@ -163,8 +149,6 @@ jobs:
           kubectl get service ${{ env.DEPLOYMENT_NAME }}-service
           kubectl get nodes -o wide
 
----
-
   # ==========================================================
   # JOB 3: STRESS TESTING AND HPA DEMO
   # ==========================================================
@@ -179,10 +163,7 @@ jobs:
       
       - name: Setup CML
         uses: iterative/setup-cml@v2.0.1
-        env:
-          # ADDED: GITHUB_TOKEN for authenticated GitHub API access to prevent rate limits
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+        
       - name: Google Cloud Authentication
         uses: 'google-github-actions/auth@v2'
         with:
@@ -275,7 +256,7 @@ jobs:
           EXTERNAL_URL="http://${{ steps.get_ip.outputs.external_ip }}"
           TARGET_ENDPOINT="${EXTERNAL_URL}/health"
           echo -e "\n\n---" >> stress_report.md
-          echo "##  SCENARIO 2: Bottleneck (Max Pods: 1, Concurrency: 1000) on \`/health\`" >> stress_report.md
+          echo "##  SCENARIO 2: Bottleneck (Max Pods: 1, Concurrency: 1000) on \`/health\`" >> stress_report.md
           
           # 1. Restrict scaling
           kubectl scale deployment/fastapi-backend --replicas=1 # Scale down
@@ -309,7 +290,7 @@ jobs:
           EXTERNAL_URL="http://${{ steps.get_ip.outputs.external_ip }}"
           TARGET_ENDPOINT="${EXTERNAL_URL}/health"
           echo -e "\n\n---" >> stress_report.md
-          echo "##  SCENARIO 3: Severe Bottleneck (Max Pods: 1, Concurrency: 2000) on \`/health\`" >> stress_report.md
+          echo "##  SCENARIO 3: Severe Bottleneck (Max Pods: 1, Concurrency: 2000) on \`/health\`" >> stress_report.md
           
           # 1. Scaling restriction remains from Scenario 2
           
@@ -333,4 +314,4 @@ jobs:
       - name: Create CML Report Comment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cml comment create stress_report.md why the error i mentioned above
+        run: cml comment create stress_report.md
